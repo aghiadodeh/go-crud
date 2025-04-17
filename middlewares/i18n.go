@@ -23,7 +23,7 @@ var (
 	bundle *i18n.Bundle
 )
 
-func Init(defaultLanguage language.Tag, assets []string) error {
+func InitLocalization(defaultLanguage language.Tag, assets []string) error {
 	// Initialize bundle
 	bundle = i18n.NewBundle(defaultLanguage)
 	bundle.RegisterUnmarshalFunc("json", json.Unmarshal)
