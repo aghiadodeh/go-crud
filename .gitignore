@@ -1,0 +1,63 @@
+# Binaries
+/bin/
+/dist/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary
+*.test
+
+# Output directories
+/out/
+/tmp/
+
+# Dependency directories
+/vendor/
+
+# Go workspace file
+go.work
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+*.sublime-workspace
+*.sublime-project
+
+# Environment files
+.env
+
+# Debug files
+debug
+*.log
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Coverage files
+coverage.txt
+profile.out
+*.cover
+
+# Go build cache
+/.cache/
+
+# Go module files (if you want to ignore them)
+# /go.sum
+# /go.mod
+
+# Fiber specific
+/fiber.log
+
+# Binary output name (if you have custom build names)
+/merchant

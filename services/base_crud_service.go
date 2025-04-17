@@ -1,0 +1,65 @@
+package services
+
+import (
+	"context"
+
+	"github.com/aghiadodeh/go-crud/dto"
+	"github.com/aghiadodeh/go-crud/models"
+	"github.com/aghiadodeh/go-crud/repositories"
+)
+
+type BaseCrudService[T any, C any, R repositories.BaseRepository[T, C]] struct {
+	Repository R
+}
+
+func NewBaseCrudService[T any, C any, R repositories.BaseRepository[T, C]](repository R) *BaseCrudService[T, C, R] {
+	return &BaseCrudService[T, C, R]{Repository: repository}
+}
+
+func (s *BaseCrudService[T, C, R]) Create(ctx context.Context, createDto any, config *C, args ...any) (*T, error) {
+	id, err := s.Repository.Create(ctx, createDto, args...)
+	if err != nil {
+		return nil, err
+	}
+	item, err := s.Repository.FindOneByPK(ctx, id, config, args...)
+	return item, err
+}
+
+func (s *BaseCrudService[T, C, R]) Update(ctx context.Context, id string, updateDto any, config *C, args ...any) (*T, error) {
+	if err := s.Repository.UpdateByPK(ctx, id, updateDto, args...); err != nil {
+		return nil, err
+	}
+	return s.Repository.FindOneByPK(ctx, id, config, args...)
+}
+
+func (s *BaseCrudService[T, C, R]) FindAll(ctx context.Context, conditions any, filter dto.FilterDto, config *C, args ...any) ([]T, error) {
+	return s.Repository.FindAll(ctx, conditions, filter, config, args...)
+}
+
+func (s *BaseCrudService[T, C, R]) FindAllWithPaging(ctx context.Context, conditions any, filter dto.FilterDto, config *C, args ...any) (*models.ListResponse[T], error) {
+	return s.Repository.FindAllWithPaging(ctx, conditions, filter, config, args...)
+}
+
+func (s *BaseCrudService[T, C, R]) FindOne(ctx context.Context, conditions any, config *C, args ...any) (*T, error) {
+	return s.Repository.FindOne(ctx, conditions, config, args...)
+}
+
+func (s *BaseCrudService[T, C, R]) FindOneByPK(ctx context.Context, id string, config *C, args ...any) (*T, error) {
+	return s.Repository.FindOneByPK(ctx, id, config, args...)
+}
+
+func (s *BaseCrudService[T, C, R]) Delete(ctx context.Context, conditions any, args ...any) error {
+	return s.Repository.Delete(ctx, conditions, args...)
+}
+
+func (s *BaseCrudService[T, C, R]) DeleteOneByPK(ctx context.Context, id string, args ...any) error {
+	return s.Repository.DeleteOneByPK(ctx, id, args...)
+}
+
+func (s *BaseCrudService[T, C, R]) Count(ctx context.Context, conditions any, args ...any) (int64, error) {
+	return s.Repository.Count(ctx, conditions, args...)
+}
+
+func (s *BaseCrudService[T, C, R]) QueryBuilder(ctx context.Context, filter dto.FilterDto, config *C, args ...any) (any, error) {
+	return s.Repository.QueryBuilder(ctx, filter, config, args...)
+}
