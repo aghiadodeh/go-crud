@@ -458,7 +458,7 @@ type RoleUpdateDto struct {
 }
 ```
 Gorm requires Entity struct for create a model, so we need mapping our createDto:
-```
+```go
 func (c *RoleController) MapCreateDtoToEntity(createDto RoleCreateDto) Role {
 	return Role{
 		NameEn: createDto.NameEN,
@@ -526,7 +526,8 @@ func NewRoleRepository(db *gorm.DB) RoleRepository {
 		},
 
 		// searchable columns, matching with `search` queryParam value
-		Searchable:  []string{"name_en", "name_ar"}, 		// ...
+		Searchable:  []string{"name_en", "name_ar"}, 
+		// ...
 	}
 
 	return &roleRepository{
@@ -598,7 +599,7 @@ Usually, You need filtering on some data that not sent if filterDto, like return
 
 Here is Example for overriding `FindAll` method in `UserController`
 
-```
+```go
 func (c *UserController) FindAll(ctx *fiber.Ctx) error {
 	// parsing filterDto
 	filter, err := c.Filter(ctx)
