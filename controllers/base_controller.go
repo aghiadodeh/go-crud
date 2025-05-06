@@ -22,7 +22,7 @@ func (c *BaseCrudController[T, C, CreateDto, UpdateDto, FilterDto]) Create(ctx *
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
-	item, err := c.Service.Create(ctx.UserContext(), createDto, nil)
+	item, err := c.Service.Create(ctx.UserContext(), c.MapCreateDtoToEntity(createDto), nil)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
@@ -98,4 +98,9 @@ func (c *BaseCrudController[T, C, CreateDto, UpdateDto, FilterDto]) Delete(ctx *
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 	return ctx.JSON(nil)
+}
+
+func (c *BaseCrudController[T, C, CreateDto, UpdateDto, FilterDto]) MapCreateDtoToEntity(createDto CreateDto) T {
+	var entity T
+	return entity
 }
