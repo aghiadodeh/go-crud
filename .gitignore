@@ -61,3 +61,5 @@ profile.out
 
 # Binary output name (if you have custom build names)
 /merchant
+
+.history
