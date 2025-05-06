@@ -1,6 +1,10 @@
 package controllers
 
 import (
+	"fmt"
+	"strings"
+
+	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 
 	"github.com/aghiadodeh/go-crud/dto"
@@ -18,10 +22,24 @@ func NewBaseCrudController[T any, C any, CreateDto any, UpdateDto any, FilterDto
 
 func (c *BaseCrudController[T, C, CreateDto, UpdateDto, FilterDto]) Create(ctx *fiber.Ctx) error {
 	var createDto CreateDto
+
+	// 1. Try parsing JSON
 	if err := ctx.BodyParser(&createDto); err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
+	// 2. Validate parsed data
+	var validate = validator.New()
+	if err := validate.Struct(createDto); err != nil {
+		// Collect error messages
+		var messages []string
+		for _, err := range err.(validator.ValidationErrors) {
+			messages = append(messages, fmt.Sprintf("%s is %s", err.Field(), err.Tag()))
+		}
+		return fiber.NewError(fiber.StatusBadRequest, strings.Join(messages, ", "))
+	}
+
+	// 3. Continue to business logic
 	item, err := c.Service.Create(ctx.UserContext(), c.MapCreateDtoToEntity(createDto), nil)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
@@ -33,10 +51,24 @@ func (c *BaseCrudController[T, C, CreateDto, UpdateDto, FilterDto]) Create(ctx *
 func (c *BaseCrudController[T, C, CreateDto, UpdateDto, FilterDto]) Update(ctx *fiber.Ctx) error {
 	id := ctx.Params("id")
 	var updateDto UpdateDto
+
+	// 1. Try parsing JSON
 	if err := ctx.BodyParser(&updateDto); err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
 
+	// 2. Validate parsed data
+	var validate = validator.New()
+	if err := validate.Struct(updateDto); err != nil {
+		// Collect error messages
+		var messages []string
+		for _, err := range err.(validator.ValidationErrors) {
+			messages = append(messages, fmt.Sprintf("%s is %s", err.Field(), err.Tag()))
+		}
+		return fiber.NewError(fiber.StatusBadRequest, strings.Join(messages, ", "))
+	}
+
+	// 3. Continue to business logic
 	item, err := c.Service.Update(ctx.UserContext(), id, updateDto, nil)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
