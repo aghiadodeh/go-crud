@@ -31,20 +31,23 @@ func ResponseTransformer(ctx *fiber.Ctx) error {
 	// Get the original response body
 	originalBody := ctx.Response().Body()
 	var data any
-	// Try to get the original response data if it exists
 	if len(originalBody) > 0 {
-		var bodyData any
-		if err := json.Unmarshal(originalBody, &bodyData); err == nil {
-			data = bodyData
+		if err := json.Unmarshal(originalBody, &data); err != nil {
+			// fallback: treat body as raw string or binary if it's not valid JSON
+			data = string(originalBody)
 		}
 	}
 
-	// Try to unmarshal the body to check if it's already a BaseResponse
-	var baseResponse models.BaseResponse[any]
-	if err := json.Unmarshal(originalBody, &baseResponse); err != nil {
-		// If unmarshaling succeeds, it's likely already a BaseResponse
-		// So we don't need to transform it again
-		return nil
+	// Check if response is already a BaseResponse
+	var maybeMap map[string]interface{}
+	if err := json.Unmarshal(originalBody, &maybeMap); err == nil {
+		_, hasSuccess := maybeMap["success"]
+		_, hasData := maybeMap["data"]
+		_, hasMessage := maybeMap["message"]
+		if hasSuccess && hasData && hasMessage {
+			// Already in base response format
+			return nil
+		}
 	}
 
 	// If we got here, the response wasn't a BaseResponse, so we'll transform it
