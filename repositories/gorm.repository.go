@@ -146,7 +146,7 @@ func (r *GormRepository[T]) DeleteOneByPK(ctx context.Context, id any, args ...a
 
 func (r *GormRepository[T]) Count(ctx context.Context, conditions any, args ...any) (int64, error) {
 	var count int64
-	query := r.BuildQueryConfig(ctx, conditions, nil)
+	query := r.BuildQueryConditions(ctx, conditions)
 	err := query.Count(&count).Error
 	return count, err
 }
