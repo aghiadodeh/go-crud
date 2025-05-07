@@ -445,7 +445,7 @@ func (s *roleService) FindByName(ctx context.Context, name string) (*Role, error
 
 ### 4- Declare Controller:
 For use the declared service, You can declare a service that extends **GormCrudController**:
-#### 1- Decalre Your Create/Update Dto (Required for exposing Create/Update APIs):
+#### 1- Declare Your Create/Update Dto (Required for exposing Create/Update APIs):
 ```go
 type RoleCreateDto struct {
 	NameEN string `json:"name_en" form:"name_en" validate:"required" gorm:"column:name_en"`
@@ -459,16 +459,37 @@ type RoleUpdateDto struct {
 ```
 Gorm requires Entity struct for create a model, so we need mapping our createDto:
 ```go
+// override controller mapper 
 func (c *RoleController) MapCreateDtoToEntity(createDto RoleCreateDto) Role {
 	return Role{
 		NameEn: createDto.NameEN,
 		NameAr: createDto.NameAR,
 	}
 }
+
+func (c *RoleController) MapUpdateDtoToEntity(updateDto RoleUpdateDto) Role {
+	return Role{
+		NameEn: updateDto.NameEN,
+		NameAr: updateDto.NameAR,
+	}
+}
+
+
+func NewRoleController(service RoleService) *RoleController {
+	// ....
+	controller := &RoleController{
+		GormCrudController: *baseController,
+		srv:                service,
+	}
+
+	controller.Mapper = controller // <-- assign mapper
+
+	return controller
+}
 ```
 <hr />
 
-#### 2- Decalre Your Filter Dto (Required for exposing FindAll/FindOne APIs):
+#### 2- Declare Your Filter Dto (Required for exposing FindAll/FindOne APIs):
 **FilterDto** is struct contains the base query properties for pagination and filtration:
 ```go
 type BaseFilterDto struct {
@@ -558,7 +579,7 @@ const (
 
 <hr />
 
-#### 4- Decalre Your Controller:
+#### 4- Declare Your Controller:
 ```go
 package roles
 
@@ -589,6 +610,7 @@ func NewRoleController(service RoleService) *RoleController {
 		GormCrudController: *baseController,
 		srv:                service,
 	}
+	controller.Mapper = controller // <-- assign mapper (if you expose create/update in the controller)
 	return controller
 }
 ```

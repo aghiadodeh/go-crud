@@ -25,7 +25,7 @@ func (s *BaseCrudService[T, C, R]) Create(ctx context.Context, createDto any, co
 	return item, err
 }
 
-func (s *BaseCrudService[T, C, R]) Update(ctx context.Context, id string, updateDto any, config *C, args ...any) (*T, error) {
+func (s *BaseCrudService[T, C, R]) Update(ctx context.Context, id any, updateDto any, config *C, args ...any) (*T, error) {
 	if err := s.Repository.UpdateByPK(ctx, id, updateDto, args...); err != nil {
 		return nil, err
 	}
@@ -44,7 +44,7 @@ func (s *BaseCrudService[T, C, R]) FindOne(ctx context.Context, conditions any, 
 	return s.Repository.FindOne(ctx, conditions, config, args...)
 }
 
-func (s *BaseCrudService[T, C, R]) FindOneByPK(ctx context.Context, id string, config *C, args ...any) (*T, error) {
+func (s *BaseCrudService[T, C, R]) FindOneByPK(ctx context.Context, id any, config *C, args ...any) (*T, error) {
 	return s.Repository.FindOneByPK(ctx, id, config, args...)
 }
 
@@ -52,7 +52,7 @@ func (s *BaseCrudService[T, C, R]) Delete(ctx context.Context, conditions any, a
 	return s.Repository.Delete(ctx, conditions, args...)
 }
 
-func (s *BaseCrudService[T, C, R]) DeleteOneByPK(ctx context.Context, id string, args ...any) error {
+func (s *BaseCrudService[T, C, R]) DeleteOneByPK(ctx context.Context, id any, args ...any) error {
 	return s.Repository.DeleteOneByPK(ctx, id, args...)
 }
 

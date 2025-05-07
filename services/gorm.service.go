@@ -17,9 +17,9 @@ func NewGormCrudService[T any](repository repositories.BaseRepository[T, configs
 	}
 }
 
-func (s *GormCrudService[T]) Update(ctx context.Context, id string, updateDto any, config *configs.GormConfig, args ...any) (*T, error) {
+func (s *GormCrudService[T]) Update(ctx context.Context, id any, updateDto any, config *configs.GormConfig, args ...any) (*T, error) {
 	// Check if record exists before updating
-	count, err := s.Repository.Count(ctx, map[string]any{"id ? =": id})
+	count, err := s.Repository.Count(ctx, repositories.GormConditionBuilder([]configs.GormQueryField{{Column: "id", Value: id}}))
 	if err != nil {
 		return nil, err
 	}

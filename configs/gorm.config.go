@@ -53,5 +53,10 @@ type GormPreloadConfig struct {
 	SelectHandler func(lang string) []GormSelectField
 }
 
+type GormQueryField struct {
+	Column string
+	Value  any
+}
+
 // Implement RepositoryConfig interface
 func (c *GormConfig) IsRepositoryConfig() {}

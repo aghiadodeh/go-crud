@@ -3,6 +3,7 @@ package repositories
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"strings"
 
 	"gorm.io/gorm"
@@ -23,18 +24,37 @@ func NewGormRepository[T any](db *gorm.DB, config *configs.GormConfig, tableName
 	return &GormRepository[T]{DB: db, Config: config, TableName: tableName}
 }
 
-func (r *GormRepository[T]) Create(ctx context.Context, createDto any, args ...any) (string, error) {
-	if err := r.DB.WithContext(ctx).Table(r.TableName).Create(createDto).Error; err != nil {
+func (r *GormRepository[T]) Create(ctx context.Context, createDto any, args ...any) (any, error) {
+	entity, ok := createDto.(T)
+	if !ok {
+		return "", fmt.Errorf("invalid type passed to Create: expected %T", entity)
+	}
+
+	err := r.DB.WithContext(ctx).Table(r.TableName).Create(&entity).Error
+	if err != nil {
 		return "", err
 	}
 
 	// Assuming ID is a string field
-	id := ""
-	if err := r.DB.WithContext(ctx).Table(r.TableName).Model(new(T)).Select("id").Last(&id).Error; err != nil {
-		return "", err
+	val := reflect.ValueOf(entity)
+	if val.Kind() == reflect.Ptr {
+		val = val.Elem()
 	}
 
-	return id, nil
+	idField := val.FieldByName("ID")
+	if !idField.IsValid() {
+		return "", fmt.Errorf("ID field not found on entity")
+	}
+	switch idField.Kind() {
+	case reflect.String:
+		return idField.String(), nil
+	case reflect.Int, reflect.Int64:
+		return idField.Int(), nil
+	case reflect.Uint, reflect.Uint64:
+		return idField.Uint(), nil
+	default:
+		return "", fmt.Errorf("unsupported ID type: %s", idField.Kind())
+	}
 }
 
 func (r *GormRepository[T]) BulkCreate(ctx context.Context, createDto []any, args ...any) ([]string, error) {
@@ -51,12 +71,13 @@ func (r *GormRepository[T]) BulkCreate(ctx context.Context, createDto []any, arg
 	return ids, nil
 }
 
-func (r *GormRepository[T]) UpdateByPK(ctx context.Context, id string, updateDto any, args ...any) error {
+func (r *GormRepository[T]) UpdateByPK(ctx context.Context, id any, updateDto any, args ...any) error {
 	return r.DB.WithContext(ctx).Table(r.TableName).Where("id = ?", id).Updates(updateDto).Error
 }
 
 func (r *GormRepository[T]) Update(ctx context.Context, conditions any, updateDto any, args ...any) error {
-	return r.DB.WithContext(ctx).Table(r.TableName).Where(conditions).Updates(updateDto).Error
+	query := r.BuildQueryConfig(ctx, conditions, nil)
+	return query.Updates(updateDto).Error
 }
 
 func (r *GormRepository[T]) FindAll(ctx context.Context, conditions any, filter dto.FilterDto, config *configs.GormConfig, args ...any) ([]T, error) {
@@ -102,10 +123,11 @@ func (r *GormRepository[T]) FindOne(ctx context.Context, conditions any, config 
 	return &model, err
 }
 
-func (r *GormRepository[T]) FindOneByPK(ctx context.Context, id string, config *configs.GormConfig, args ...any) (*T, error) {
+func (r *GormRepository[T]) FindOneByPK(ctx context.Context, id any, config *configs.GormConfig, args ...any) (*T, error) {
 	var model T
 	condition := make(map[string]any)
-	condition["id = ?"] = id
+	condition["query"] = "id = ?"
+	condition["args"] = []any{id}
 	query := r.BuildQueryConfig(ctx, condition, config)
 	err := query.First(&model).Error
 	if err == gorm.ErrRecordNotFound {
@@ -118,16 +140,13 @@ func (r *GormRepository[T]) Delete(ctx context.Context, conditions any, args ...
 	return r.DB.WithContext(ctx).Table(r.TableName).Where(conditions).Delete(new(T)).Error
 }
 
-func (r *GormRepository[T]) DeleteOneByPK(ctx context.Context, id string, args ...any) error {
+func (r *GormRepository[T]) DeleteOneByPK(ctx context.Context, id any, args ...any) error {
 	return r.DB.WithContext(ctx).Table(r.TableName).Where("id = ?", id).Delete(new(T)).Error
 }
 
 func (r *GormRepository[T]) Count(ctx context.Context, conditions any, args ...any) (int64, error) {
 	var count int64
-	query := r.DB.WithContext(ctx).Table(r.TableName)
-	if conditions != nil {
-		query = query.Where(conditions)
-	}
+	query := r.BuildQueryConfig(ctx, conditions, nil)
 	err := query.Count(&count).Error
 	return count, err
 }
@@ -307,5 +326,21 @@ func Sort(sort, dir string) func(db *gorm.DB) *gorm.DB {
 			db.Order(fmt.Sprintf("%s %s", sort, dir))
 		}
 		return db
+	}
+}
+
+func GormConditionBuilder(conditions []configs.GormQueryField) map[string]any {
+	queryStrings := []string{}
+	queryValues := []any{}
+
+	for _, condition := range conditions {
+		queryStrings = append(queryStrings, fmt.Sprintf("%s = ?", condition.Column))
+		queryValues = append(queryValues, condition.Value)
+	}
+
+	finalQuery := strings.Join(queryStrings, " AND ")
+	return map[string]any{
+		"query": finalQuery,
+		"args":  queryValues,
 	}
 }

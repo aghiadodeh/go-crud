@@ -14,6 +14,7 @@ import (
 type BaseCrudController[T any, C any, CreateDto any, UpdateDto any, FilterDto dto.FilterDto] struct {
 	Service services.IBaseCrudService[T, C]
 	Filter  func(ctx *fiber.Ctx) (FilterDto, error)
+	Mapper  CreateDtoMapper[CreateDto, UpdateDto, T]
 }
 
 func NewBaseCrudController[T any, C any, CreateDto any, UpdateDto any, FilterDto dto.FilterDto](service services.IBaseCrudService[T, C], filter func(ctx *fiber.Ctx) (FilterDto, error)) *BaseCrudController[T, C, CreateDto, UpdateDto, FilterDto] {
@@ -39,8 +40,14 @@ func (c *BaseCrudController[T, C, CreateDto, UpdateDto, FilterDto]) Create(ctx *
 		return fiber.NewError(fiber.StatusBadRequest, strings.Join(messages, ", "))
 	}
 
-	// 3. Continue to business logic
-	item, err := c.Service.Create(ctx.UserContext(), c.MapCreateDtoToEntity(createDto), nil)
+	// 3. Map Dto to Entity
+	if c.Mapper == nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "No Mapper")
+	}
+	entity := c.Mapper.MapCreateDtoToEntity(createDto)
+
+	// 4. Continue to business logic
+	item, err := c.Service.Create(ctx.UserContext(), entity, nil)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
@@ -68,8 +75,14 @@ func (c *BaseCrudController[T, C, CreateDto, UpdateDto, FilterDto]) Update(ctx *
 		return fiber.NewError(fiber.StatusBadRequest, strings.Join(messages, ", "))
 	}
 
-	// 3. Continue to business logic
-	item, err := c.Service.Update(ctx.UserContext(), id, updateDto, nil)
+	// 3. Map Dto to Entity
+	if c.Mapper == nil {
+		return fiber.NewError(fiber.StatusInternalServerError, "No Mapper")
+	}
+	entity := c.Mapper.MapUpdateDtoToEntity(updateDto)
+
+	// 4. Continue to business logic
+	item, err := c.Service.Update(ctx.UserContext(), id, entity, nil)
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
@@ -132,7 +145,7 @@ func (c *BaseCrudController[T, C, CreateDto, UpdateDto, FilterDto]) Delete(ctx *
 	return ctx.JSON(nil)
 }
 
-func (c *BaseCrudController[T, C, CreateDto, UpdateDto, FilterDto]) MapCreateDtoToEntity(createDto CreateDto) T {
-	var entity T
-	return entity
+type CreateDtoMapper[CreateDto any, UpdateDto any, T any] interface {
+	MapCreateDtoToEntity(createDto CreateDto) T
+	MapUpdateDtoToEntity(updateDto UpdateDto) T
 }
