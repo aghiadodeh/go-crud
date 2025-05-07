@@ -54,8 +54,9 @@ type GormPreloadConfig struct {
 }
 
 type GormQueryField struct {
-	Column string
-	Value  any
+	Operation string
+	Column    string
+	Value     any
 }
 
 // Implement RepositoryConfig interface

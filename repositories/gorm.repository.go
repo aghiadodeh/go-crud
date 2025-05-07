@@ -334,7 +334,11 @@ func GormConditionBuilder(conditions []configs.GormQueryField) map[string]any {
 	queryValues := []any{}
 
 	for _, condition := range conditions {
-		queryStrings = append(queryStrings, fmt.Sprintf("%s = ?", condition.Column))
+		operation := condition.Operation
+		if operation == "" {
+			operation = "="
+		}
+		queryStrings = append(queryStrings, fmt.Sprintf("%s %s ?", condition.Column, operation))
 		queryValues = append(queryValues, condition.Value)
 	}
 
