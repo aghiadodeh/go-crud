@@ -44,7 +44,10 @@ func (c *BaseCrudController[T, C, CreateDto, UpdateDto, FilterDto]) Create(ctx *
 	if c.Mapper == nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "No Mapper")
 	}
-	entity := c.Mapper.MapCreateDtoToEntity(createDto)
+	entity, err := c.Mapper.MapCreateDtoToEntity(createDto)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, err.Error())
+	}
 
 	// 4. Continue to business logic
 	item, err := c.Service.Create(ctx.UserContext(), entity, nil)
@@ -79,7 +82,10 @@ func (c *BaseCrudController[T, C, CreateDto, UpdateDto, FilterDto]) Update(ctx *
 	if c.Mapper == nil {
 		return fiber.NewError(fiber.StatusInternalServerError, "No Mapper")
 	}
-	entity := c.Mapper.MapUpdateDtoToEntity(updateDto)
+	entity, err := c.Mapper.MapUpdateDtoToEntity(updateDto)
+	if err != nil {
+		return fiber.NewError(fiber.StatusBadRequest, err.Error())
+	}
 
 	// 4. Continue to business logic
 	item, err := c.Service.Update(ctx.UserContext(), id, entity, nil)
@@ -146,6 +152,6 @@ func (c *BaseCrudController[T, C, CreateDto, UpdateDto, FilterDto]) Delete(ctx *
 }
 
 type CreateDtoMapper[CreateDto any, UpdateDto any, T any] interface {
-	MapCreateDtoToEntity(createDto CreateDto) T
-	MapUpdateDtoToEntity(updateDto UpdateDto) T
+	MapCreateDtoToEntity(createDto CreateDto) (T, error)
+	MapUpdateDtoToEntity(updateDto UpdateDto) (T, error)
 }

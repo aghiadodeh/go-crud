@@ -460,18 +460,18 @@ type RoleUpdateDto struct {
 Gorm requires Entity struct for create a model, so we need mapping our createDto:
 ```go
 // override controller mapper 
-func (c *RoleController) MapCreateDtoToEntity(createDto RoleCreateDto) Role {
+func (c *RoleController) MapCreateDtoToEntity(createDto RoleCreateDto) (Role, error) {
 	return Role{
 		NameEn: createDto.NameEN,
 		NameAr: createDto.NameAR,
-	}
+	}, nil
 }
 
-func (c *RoleController) MapUpdateDtoToEntity(updateDto RoleUpdateDto) Role {
+func (c *RoleController) MapUpdateDtoToEntity(updateDto RoleUpdateDto) (Role, error) {
 	return Role{
 		NameEn: updateDto.NameEN,
 		NameAr: updateDto.NameAR,
-	}
+	}, nil
 }
 
 
