@@ -246,7 +246,11 @@ func (r *GormRepository[T]) BuildQueryConfig(ctx context.Context, conditions any
 		selects := config.SelectHandler(lang)
 		var selectClauses []string
 		for _, f := range selects {
-			selectClauses = append(selectClauses, fmt.Sprintf("%s AS %s", f.Column, f.Alias))
+			alias := f.Alias
+			if alias == "" {
+				alias = f.Column
+			}
+			selectClauses = append(selectClauses, fmt.Sprintf("%s AS %s", f.Column, alias))
 		}
 		query = query.Select(strings.Join(selectClauses, ", "))
 	}
@@ -257,7 +261,11 @@ func (r *GormRepository[T]) BuildQueryConfig(ctx context.Context, conditions any
 			selects := preload.SelectHandler(lang)
 			var preloadClauses []string
 			for _, f := range selects {
-				preloadClauses = append(preloadClauses, fmt.Sprintf("%s AS %s", f.Column, f.Alias))
+				alias := f.Alias
+				if alias == "" {
+					alias = f.Column
+				}
+				preloadClauses = append(preloadClauses, fmt.Sprintf("%s AS %s", f.Column, alias))
 			}
 			query = query.Preload(preload.Relation, func(db *gorm.DB) *gorm.DB {
 				return db.Select(strings.Join(preloadClauses, ", "))
