@@ -167,8 +167,8 @@ func (r *GormRepository[T]) QueryBuilder(ctx context.Context, filter dto.FilterD
 	if filterDto.Search != nil && len(config.Searchable) > 0 {
 		var searchParts []string
 		for _, field := range config.Searchable {
-			searchParts = append(searchParts, fmt.Sprintf("%s LIKE ?", field))
-			queryValues = append(queryValues, fmt.Sprintf("%%%s%%", *filterDto.Search))
+			searchParts = append(searchParts, fmt.Sprintf("lower(%s) LIKE ?", field))
+			queryValues = append(queryValues, fmt.Sprintf("%%%s%%", strings.ToLower(*filterDto.Search)))
 		}
 		queryStrings = append(queryStrings, "("+strings.Join(searchParts, " OR ")+")")
 	}
@@ -206,8 +206,8 @@ func (r *GormRepository[T]) QueryBuilder(ctx context.Context, filter dto.FilterD
 				queryStrings = append(queryStrings, fmt.Sprintf("%s >= ?", column))
 				queryValues = append(queryValues, value)
 			case configs.GormFilterTypeRegex:
-				queryStrings = append(queryStrings, fmt.Sprintf("%s LIKE ?", column))
-				queryValues = append(queryValues, fmt.Sprintf("%%%s%%", value))
+				queryStrings = append(queryStrings, fmt.Sprintf("lower(%s) LIKE ?", column))
+				queryValues = append(queryValues, fmt.Sprintf("%%%s%%", strings.ToLower(value.(string))))
 			}
 		}
 	}
