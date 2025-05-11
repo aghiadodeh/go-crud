@@ -92,7 +92,7 @@ func (r *GormRepository[T]) FindAllWithPaging(ctx context.Context, conditions an
 	var total int64
 
 	query := r.buildBaseQuery(ctx, conditions, filter, config)
-	countQuery := r.BuildQueryConditions(ctx, conditions)
+	countQuery := r.BuildQueryConditions(ctx, conditions, config)
 
 	if err := countQuery.Table(r.TableName).Count(&total).Error; err != nil {
 		return nil, err
@@ -146,7 +146,7 @@ func (r *GormRepository[T]) DeleteOneByPK(ctx context.Context, id any, args ...a
 
 func (r *GormRepository[T]) Count(ctx context.Context, conditions any, args ...any) (int64, error) {
 	var count int64
-	query := r.BuildQueryConditions(ctx, conditions)
+	query := r.BuildQueryConditions(ctx, conditions, r.Config)
 	err := query.Count(&count).Error
 	return count, err
 }
@@ -219,8 +219,11 @@ func (r *GormRepository[T]) QueryBuilder(ctx context.Context, filter dto.FilterD
 	}, nil
 }
 
-func (r *GormRepository[T]) BuildQueryConditions(ctx context.Context, conditions any) *gorm.DB {
+func (r *GormRepository[T]) BuildQueryConditions(ctx context.Context, conditions any, gormConfig *configs.GormConfig) *gorm.DB {
 	query := r.DB.WithContext(ctx).Table(r.TableName)
+	if gormConfig.Joins != "" {
+		query = query.Joins(gormConfig.Joins)
+	}
 	if conditionsMap, ok := conditions.(map[string]any); ok {
 		if q, ok := conditionsMap["query"].(string); ok && q != "" {
 			args := conditionsMap["args"].([]interface{})
@@ -231,14 +234,14 @@ func (r *GormRepository[T]) BuildQueryConditions(ctx context.Context, conditions
 }
 
 func (r *GormRepository[T]) BuildQueryConfig(ctx context.Context, conditions any, gormConfig *configs.GormConfig) *gorm.DB {
-	query := r.BuildQueryConditions(ctx, conditions)
-
 	var config configs.GormConfig
 	if gormConfig == nil {
 		config = *r.Config
 	} else {
 		config = *gormConfig
 	}
+
+	query := r.BuildQueryConditions(ctx, conditions, &config)
 
 	lang := middlewares.GetLangFromContext(ctx)
 	// Handle dynamic SELECTs

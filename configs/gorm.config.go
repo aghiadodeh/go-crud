@@ -40,6 +40,7 @@ type GormConfig struct {
 	DefaultSort   string
 	SelectHandler func(lang string) []GormSelectField
 	Preloads      []GormPreloadConfig
+	Joins         string
 	UnScoped      bool
 }
 
