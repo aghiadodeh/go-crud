@@ -221,9 +221,18 @@ func (r *GormRepository[T]) QueryBuilder(ctx context.Context, filter dto.FilterD
 
 func (r *GormRepository[T]) BuildQueryConditions(ctx context.Context, conditions any, gormConfig *configs.GormConfig) *gorm.DB {
 	query := r.DB.WithContext(ctx).Table(r.TableName)
-	if gormConfig.Joins != "" {
-		query = query.Joins(gormConfig.Joins)
+
+	var config configs.GormConfig
+	if gormConfig == nil {
+		config = *r.Config
+	} else {
+		config = *gormConfig
 	}
+
+	if config.Joins != "" {
+		query = query.Joins(config.Joins)
+	}
+
 	if conditionsMap, ok := conditions.(map[string]any); ok {
 		if q, ok := conditionsMap["query"].(string); ok && q != "" {
 			args := conditionsMap["args"].([]interface{})
