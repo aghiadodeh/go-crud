@@ -94,7 +94,7 @@ func (r *GormRepository[T]) FindAllWithPaging(ctx context.Context, conditions an
 	query := r.buildBaseQuery(ctx, conditions, filter, config)
 	countQuery := r.BuildQueryConditions(ctx, conditions, config)
 
-	if err := countQuery.Table(r.TableName).Count(&total).Error; err != nil {
+	if err := countQuery.Model(new(T)).Count(&total).Error; err != nil {
 		return nil, err
 	}
 
