@@ -26,7 +26,7 @@ func (c *BaseCrudController[T, C, CreateDto, UpdateDto, FilterDto]) Create(ctx *
 
 	// 1. Try parsing JSON
 	if err := ctx.BodyParser(&createDto); err != nil {
-		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
+		return fiber.NewError(fiber.StatusUnprocessableEntity, err.Error())
 	}
 
 	// 2. Validate parsed data
