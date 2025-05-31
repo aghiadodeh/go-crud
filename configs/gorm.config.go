@@ -12,6 +12,7 @@ type GormFilterType string
 const (
 	GormFilterTypeEqual GormFilterType = "equal"
 	GormFilterTypeIn    GormFilterType = "in"
+	GormFilterTypeNotIn GormFilterType = "not_in"
 	GormFilterTypeLT    GormFilterType = "lt"
 	GormFilterTypeGT    GormFilterType = "gt"
 	GormFilterTypeLTE   GormFilterType = "lte"
