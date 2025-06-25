@@ -82,7 +82,7 @@ func (r *GormRepository[T]) Update(ctx context.Context, conditions any, updateDt
 
 func (r *GormRepository[T]) FindAll(ctx context.Context, conditions any, filter dto.FilterDto, config *configs.GormConfig, args ...any) ([]T, error) {
 	var models []T
-	query := r.buildBaseQuery(ctx, conditions, filter, config)
+	query := r.BuildBaseQuery(ctx, conditions, filter, config)
 	err := query.Find(&models).Error
 	return models, err
 }
@@ -91,7 +91,7 @@ func (r *GormRepository[T]) FindAllWithPaging(ctx context.Context, conditions an
 	var entities []T
 	var total int64
 
-	query := r.buildBaseQuery(ctx, conditions, filter, config)
+	query := r.BuildBaseQuery(ctx, conditions, filter, config)
 	countQuery := r.BuildQueryConditions(ctx, conditions, config)
 
 	if err := countQuery.Model(new(T)).Count(&total).Error; err != nil {
@@ -297,7 +297,7 @@ func (r *GormRepository[T]) BuildQueryConfig(ctx context.Context, conditions any
 	return query
 }
 
-func (r *GormRepository[T]) buildBaseQuery(ctx context.Context, conditions any, filter dto.FilterDto, gormConfig *configs.GormConfig) *gorm.DB {
+func (r *GormRepository[T]) BuildBaseQuery(ctx context.Context, conditions any, filter dto.FilterDto, gormConfig *configs.GormConfig) *gorm.DB {
 	query := r.BuildQueryConfig(ctx, conditions, gormConfig)
 	var config configs.GormConfig
 	if gormConfig == nil {
