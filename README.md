@@ -256,6 +256,31 @@ After Add **middlewares.ResponseTransformer** The response will be like this:
   "statusCode": 200
 }
 ```
+
+
+If You Want to Skip Transforming in Some API:
+```go
+func (c *AdminOrderController) ExportOrderStatistics(ctx *fiber.Ctx) error {
+	ctx.Locals("skipResponseTransform", true)
+
+	file := /* Your Excel File */
+
+	ctx.Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	ctx.Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s.xlsx"`, "Orders"))
+	ctx.Set("File-Transfer-Encoding", "binary")
+
+	// Write to buffer first
+	var buf bytes.Buffer
+	if err := file.Write(&buf); err != nil {
+		return err
+	}
+	defer file.Close()
+
+	// Send the buffer as response
+	return ctx.SendStream(bytes.NewReader(buf.Bytes()))
+}
+```
+
 <hr />
 
 ## Manage CRUDs:

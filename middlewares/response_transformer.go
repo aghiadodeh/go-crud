@@ -15,6 +15,11 @@ func ResponseTransformer(ctx *fiber.Ctx) error {
 		return err
 	}
 
+	// Skip Transform
+	if skip, ok := ctx.Locals("skipResponseTransform").(bool); ok && skip {
+		return nil
+	}
+
 	// Get the status code
 	statusCode := ctx.Response().StatusCode()
 	success := statusCode >= 200 && statusCode <= 299
