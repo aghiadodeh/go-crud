@@ -195,6 +195,7 @@ func (r *GormRepository[T]) QueryBuilder(ctx context.Context, filter dto.FilterD
 				queryValues = append(queryValues, value)
 			case configs.GormFilterTypeNotIn:
 				queryStrings = append(queryStrings, fmt.Sprintf("%s NOT IN (?)", column))
+				queryValues = append(queryValues, value)
 			case configs.GormFilterTypeLT:
 				queryStrings = append(queryStrings, fmt.Sprintf("%s < ?", column))
 				queryValues = append(queryValues, value)
