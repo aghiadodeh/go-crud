@@ -52,6 +52,7 @@ type GormSelectField struct {
 
 type GormPreloadConfig struct {
 	Relation      string
+	UnScoped      bool
 	SelectHandler func(lang string) []GormSelectField
 }
 

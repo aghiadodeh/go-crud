@@ -283,6 +283,9 @@ func (r *GormRepository[T]) BuildQueryConfig(ctx context.Context, conditions any
 				preloadClauses = append(preloadClauses, fmt.Sprintf("%s AS %s", f.Column, alias))
 			}
 			query = query.Preload(preload.Relation, func(db *gorm.DB) *gorm.DB {
+				if preload.UnScoped {
+					db = db.Unscoped()
+				}
 				return db.Select(strings.Join(preloadClauses, ", "))
 			})
 		} else {
