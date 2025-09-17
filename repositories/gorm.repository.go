@@ -98,6 +98,18 @@ func (r *GormRepository[T]) FindAllWithPaging(ctx context.Context, conditions an
 		return nil, err
 	}
 
+	var gormConfig configs.GormConfig
+	if config == nil {
+		gormConfig = *r.Config
+	} else {
+		gormConfig = *config
+	}
+
+	if gormConfig.Group != "" {
+		query = query.Group(gormConfig.Group)
+		countQuery = countQuery.Group(gormConfig.Group)
+	}
+
 	filterDto := filter.GetBase()
 	if filterDto.Pagination == nil || *filterDto.Pagination {
 		query = query.Scopes(Paginate(filterDto.Page, filterDto.PerPage))

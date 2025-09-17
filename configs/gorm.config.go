@@ -43,6 +43,7 @@ type GormConfig struct {
 	Preloads      []GormPreloadConfig
 	Joins         string
 	UnScoped      bool
+	Group         string
 }
 
 type GormSelectField struct {
