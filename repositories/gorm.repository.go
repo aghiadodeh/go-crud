@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 
 	"github.com/aghiadodeh/go-crud/configs"
 	"github.com/aghiadodeh/go-crud/dto"
@@ -137,15 +138,19 @@ func (r *GormRepository[T]) FindOne(ctx context.Context, conditions any, config 
 
 func (r *GormRepository[T]) FindOneByPK(ctx context.Context, id any, config *configs.GormConfig, args ...any) (*T, error) {
 	var model T
-	condition := make(map[string]any)
-	condition["query"] = "id = ?"
-	condition["args"] = []any{id}
-	query := r.BuildQueryConfig(ctx, condition, config)
+	query := r.BuildQueryConfig(ctx, Eq("id", id), config)
 	err := query.First(&model).Error
 	if err == gorm.ErrRecordNotFound {
 		return nil, nil
 	}
 	return &model, err
+}
+
+func (r *GormRepository[T]) FindByIDs(ctx context.Context, ids []any, config *configs.GormConfig, args ...any) ([]T, error) {
+	var entities []T
+	query := r.BuildQueryConfig(ctx, In("id", ids), config)
+	err := query.Find(&entities).Error
+	return entities, err
 }
 
 func (r *GormRepository[T]) Delete(ctx context.Context, conditions any, args ...any) error {
@@ -156,11 +161,39 @@ func (r *GormRepository[T]) DeleteOneByPK(ctx context.Context, id any, args ...a
 	return r.DB.WithContext(ctx).Table(r.TableName).Where("id = ?", id).Delete(new(T)).Error
 }
 
+func (r *GormRepository[T]) DeleteByIDs(ctx context.Context, ids []any, args ...any) error {
+	return r.DB.WithContext(ctx).Table(r.TableName).Where("id IN (?)", ids).Delete(new(T)).Error
+}
+
 func (r *GormRepository[T]) Count(ctx context.Context, conditions any, args ...any) (int64, error) {
 	var count int64
 	query := r.BuildQueryConditions(ctx, conditions, r.Config)
 	err := query.Count(&count).Error
 	return count, err
+}
+
+func (r *GormRepository[T]) Exists(ctx context.Context, conditions any, args ...any) (bool, error) {
+	count, err := r.Count(ctx, conditions, args...)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+func (r *GormRepository[T]) ExistsByPK(ctx context.Context, id any, args ...any) (bool, error) {
+	return r.Exists(ctx, Eq("id", id), args...)
+}
+
+func (r *GormRepository[T]) Pluck(ctx context.Context, column string, conditions any, args ...any) ([]any, error) {
+	var results []any
+	query := r.BuildQueryConditions(ctx, conditions, r.Config)
+	err := query.Model(new(T)).Pluck(column, &results).Error
+	return results, err
+}
+
+func (r *GormRepository[T]) UpdateColumnsByPK(ctx context.Context, id any, columns map[string]any, args ...any) error {
+	result := r.DB.WithContext(ctx).Table(r.TableName).Where("id = ?", id).UpdateColumns(columns)
+	return result.Error
 }
 
 func (r *GormRepository[T]) QueryBuilder(ctx context.Context, filter dto.FilterDto, gormConfig *configs.GormConfig, args ...any) (any, error) {
@@ -246,6 +279,11 @@ func (r *GormRepository[T]) BuildQueryConditions(ctx context.Context, conditions
 
 	if config.Joins != "" {
 		query = query.Joins(config.Joins)
+	}
+
+	// Accept *Condition directly so callers don't need to call .Build()
+	if cond, ok := conditions.(*Condition); ok {
+		conditions = cond.Build()
 	}
 
 	if conditionsMap, ok := conditions.(map[string]any); ok {
@@ -340,6 +378,103 @@ func (r *GormRepository[T]) BuildBaseQuery(ctx context.Context, conditions any, 
 	query = query.Order(fmt.Sprintf("%s %s", sortKey, sortDir))
 
 	return query
+}
+
+// CreateOrUpdate performs an upsert operation. It creates the entity if it doesn't exist,
+// or updates the specified columns if a conflict is found on the given conflictColumns.
+// If updateColumns is empty, all columns are updated on conflict.
+func (r *GormRepository[T]) CreateOrUpdate(ctx context.Context, entity any, conflictColumns []string, updateColumns []string, args ...any) (any, error) {
+	typedEntity, ok := entity.(T)
+	if !ok {
+		return nil, fmt.Errorf("invalid type passed to CreateOrUpdate: expected %T", new(T))
+	}
+
+	var onConflict clause.OnConflict
+	if len(conflictColumns) > 0 {
+		columns := make([]clause.Column, len(conflictColumns))
+		for i, col := range conflictColumns {
+			columns[i] = clause.Column{Name: col}
+		}
+		onConflict.Columns = columns
+	}
+
+	if len(updateColumns) > 0 {
+		onConflict.DoUpdates = clause.AssignmentColumns(updateColumns)
+	} else {
+		onConflict.UpdateAll = true
+	}
+
+	err := r.DB.WithContext(ctx).Table(r.TableName).Clauses(onConflict).Create(&typedEntity).Error
+	if err != nil {
+		return nil, err
+	}
+
+	val := reflect.ValueOf(typedEntity)
+	if val.Kind() == reflect.Ptr {
+		val = val.Elem()
+	}
+	idField := val.FieldByName("ID")
+	if !idField.IsValid() {
+		return nil, fmt.Errorf("ID field not found on entity")
+	}
+	switch idField.Kind() {
+	case reflect.String:
+		return idField.String(), nil
+	case reflect.Int, reflect.Int64:
+		return idField.Int(), nil
+	case reflect.Uint, reflect.Uint64:
+		return idField.Uint(), nil
+	default:
+		return nil, fmt.Errorf("unsupported ID type: %s", idField.Kind())
+	}
+}
+
+// FindOrCreate finds the first record matching conditions, or creates a new one with createDto.
+// Returns the entity and a boolean indicating whether it was created (true) or found (false).
+func (r *GormRepository[T]) FindOrCreate(ctx context.Context, conditions any, createDto any, config *configs.GormConfig, args ...any) (*T, bool, error) {
+	entity, ok := createDto.(T)
+	if !ok {
+		return nil, false, fmt.Errorf("invalid type passed to FindOrCreate: expected %T", new(T))
+	}
+
+	query := r.BuildQueryConfig(ctx, conditions, config)
+	result := query.FirstOrCreate(&entity)
+	if result.Error != nil {
+		return nil, false, result.Error
+	}
+
+	created := result.RowsAffected > 0
+	return &entity, created, nil
+}
+
+// WithTransaction executes the given function within a database transaction.
+// If the function returns an error, the transaction is rolled back.
+// If the function returns nil, the transaction is committed.
+func (r *GormRepository[T]) WithTransaction(ctx context.Context, fn func(tx *gorm.DB) error) error {
+	return r.DB.WithContext(ctx).Transaction(fn)
+}
+
+// Restore restores a soft-deleted record by its primary key.
+// This only works with models that use GORM's soft delete (DeletedAt field).
+func (r *GormRepository[T]) Restore(ctx context.Context, id any, args ...any) error {
+	return r.DB.WithContext(ctx).Table(r.TableName).Unscoped().Where("id = ?", id).UpdateColumn("deleted_at", nil).Error
+}
+
+// RestoreByConditions restores soft-deleted records matching the given conditions.
+func (r *GormRepository[T]) RestoreByConditions(ctx context.Context, conditions any, args ...any) error {
+	// Accept *Condition directly
+	if cond, ok := conditions.(*Condition); ok {
+		conditions = cond.Build()
+	}
+
+	query := r.DB.WithContext(ctx).Table(r.TableName).Unscoped()
+	if conditionsMap, ok := conditions.(map[string]any); ok {
+		if q, ok := conditionsMap["query"].(string); ok && q != "" {
+			queryArgs := conditionsMap["args"].([]interface{})
+			query = query.Where(q, queryArgs...)
+		}
+	}
+	return query.UpdateColumn("deleted_at", nil).Error
 }
 
 func Paginate(page, size int) func(db *gorm.DB) *gorm.DB {

@@ -19,11 +19,11 @@ func NewGormCrudService[T any](repository repositories.BaseRepository[T, configs
 
 func (s *GormCrudService[T]) Update(ctx context.Context, id any, updateDto any, config *configs.GormConfig, args ...any) (*T, error) {
 	// Check if record exists before updating
-	count, err := s.Repository.Count(ctx, repositories.GormConditionBuilder([]configs.GormQueryField{{Column: "id", Value: id}}))
+	exists, err := s.Repository.ExistsByPK(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-	if count == 0 {
+	if !exists {
 		return nil, nil
 	}
 

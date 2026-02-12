@@ -91,7 +91,7 @@ type BaseResponse[T any] struct {
 
 ## Middlewares:
 
-This package come with three middlwares:
+This package comes with three middlewares:
 
 ### 1- Error Handler:
 
@@ -302,17 +302,37 @@ type Role struct {
 
 ### 2- Declare Repository:
 **BaseRepository[T]** is a generic Repository which contains the basic CRUD operations:
-1. Create
-1. BulkCreate
-1. UpdateByPK
-1. Update
-1. FindAll
-1. FindAllWithPaging
-1. FindOne
-1. FindOneByPK
-1. Delete
-1. DeleteOneByPK
-1. Count
+
+| # | Method | Description |
+|---|--------|-------------|
+| 1 | `Create` | Create a single entity |
+| 2 | `BulkCreate` | Create multiple entities at once |
+| 3 | `UpdateByPK` | Update entity by primary key (struct-based, skips zero values) |
+| 4 | `Update` | Update entities matching conditions |
+| 5 | `UpdateColumnsByPK` | Update specific columns by primary key (map-based, includes zero values) |
+| 6 | `FindAll` | Find all entities matching conditions |
+| 7 | `FindAllWithPaging` | Find all entities with pagination |
+| 8 | `FindOne` | Find a single entity by conditions |
+| 9 | `FindOneByPK` | Find a single entity by primary key |
+| 10 | `FindByIDs` | Find multiple entities by a list of IDs |
+| 11 | `Delete` | Delete entities matching conditions |
+| 12 | `DeleteOneByPK` | Delete a single entity by primary key |
+| 13 | `DeleteByIDs` | Delete multiple entities by a list of IDs |
+| 14 | `Count` | Count entities matching conditions |
+| 15 | `Exists` | Check if any entity matches conditions (returns bool) |
+| 16 | `ExistsByPK` | Check if an entity exists by primary key (returns bool) |
+| 17 | `Pluck` | Extract a single column's values from matching entities |
+| 18 | `QueryBuilder` | Build query conditions from a FilterDto |
+
+**GormRepository** also provides these GORM-specific methods (not on the interface):
+
+| Method | Description |
+|--------|-------------|
+| `CreateOrUpdate` | Upsert -- insert or update on conflict |
+| `FindOrCreate` | Find by conditions or create if not found |
+| `WithTransaction` | Execute operations inside a database transaction |
+| `Restore` | Restore a soft-deleted record by primary key |
+| `RestoreByConditions` | Restore soft-deleted records matching conditions |
 
 So, you need to create a repository that extends **BaseRepository**:
 
@@ -461,9 +481,9 @@ func NewRoleService(repository RoleRepository) RoleService {
 	}
 }
 
-// Custom method example
+// Custom method example using the Condition Builder
 func (s *roleService) FindByName(ctx context.Context, name string) (*Role, error) {
-	return s.FindOne(ctx, map[string]any{"name_en LIKE ?": name}, nil)
+	return s.FindOne(ctx, repositories.Contains("name_en", name), nil)
 }
 ```
 <hr />
@@ -593,6 +613,7 @@ type GormFilterType string
 const (
 	GormFilterTypeEqual GormFilterType = "equal"
 	GormFilterTypeIn    GormFilterType = "in"
+	GormFilterTypeNotIn GormFilterType = "not_in"
 	GormFilterTypeLT    GormFilterType = "lt"
 	GormFilterTypeGT    GormFilterType = "gt"
 	GormFilterTypeLTE   GormFilterType = "lte"
@@ -601,6 +622,147 @@ const (
 )
 ```
 
+<hr />
+
+## Condition Builder:
+
+Instead of writing raw SQL query strings, use the **fluent Condition Builder** to construct type-safe, readable query conditions.
+
+### Before vs After:
+```go
+// Before (raw strings, error-prone):
+conditions := map[string]any{
+    "query": "status = ? AND age >= ?",
+    "args":  []any{"active", 18},
+}
+
+// After (fluent builder):
+conditions := repositories.Eq("status", "active").
+    And(repositories.Gte("age", 18))
+```
+
+Pass `*Condition` directly to any repository/service method -- no `.Build()` needed:
+```go
+repo.FindOne(ctx, repositories.Eq("email", email), config)
+repo.FindAll(ctx, repositories.Eq("active", true), filter, config)
+repo.Count(ctx, repositories.Gt("age", 18))
+repo.Delete(ctx, repositories.In("id", expiredIDs))
+repo.Exists(ctx, repositories.Eq("username", name))
+```
+
+### Available Constructors:
+
+| Function | SQL Generated |
+|----------|---------------|
+| `Eq(col, val)` | `col = ?` |
+| `NotEq(col, val)` | `col != ?` |
+| `Gt(col, val)` | `col > ?` |
+| `Gte(col, val)` | `col >= ?` |
+| `Lt(col, val)` | `col < ?` |
+| `Lte(col, val)` | `col <= ?` |
+| `In(col, vals)` | `col IN (?)` |
+| `NotIn(col, vals)` | `col NOT IN (?)` |
+| `Like(col, pattern)` | `col LIKE ?` |
+| `ILike(col, pattern)` | `LOWER(col) LIKE ?` (auto-lowercased) |
+| `Contains(col, val)` | `LOWER(col) LIKE '%val%'` |
+| `StartsWith(col, val)` | `LOWER(col) LIKE 'val%'` |
+| `EndsWith(col, val)` | `LOWER(col) LIKE '%val'` |
+| `IsNull(col)` | `col IS NULL` |
+| `IsNotNull(col)` | `col IS NOT NULL` |
+| `Between(col, lo, hi)` | `col BETWEEN ? AND ?` |
+| `NotBetween(col, lo, hi)` | `col NOT BETWEEN ? AND ?` |
+| `Raw(sql, args...)` | any custom SQL fragment |
+
+### Chaining with And / Or:
+
+```go
+// AND: status = 'active' AND age >= 18 AND role IN ('admin','editor')
+cond := repositories.Eq("status", "active").
+    And(repositories.Gte("age", 18)).
+    And(repositories.In("role", []string{"admin", "editor"}))
+
+// OR: role = 'admin' OR role = 'moderator'
+cond := repositories.Eq("role", "admin").
+    Or(repositories.Eq("role", "moderator"))
+```
+
+### Grouped Sub-Conditions:
+
+Nested conditions are automatically wrapped in parentheses:
+
+```go
+// status = 'active' AND (role = 'admin' OR role = 'moderator')
+cond := repositories.Eq("status", "active").
+    And(
+        repositories.Eq("role", "admin").Or(repositories.Eq("role", "moderator")),
+    )
+```
+
+### More Examples:
+
+```go
+// NULL checks
+cond := repositories.IsNull("deleted_at")
+
+// BETWEEN
+cond := repositories.Between("created_at", startDate, endDate)
+
+// Case-insensitive search
+cond := repositories.Contains("name", "john") // LOWER(name) LIKE '%john%'
+
+// Escape hatch for complex SQL
+cond := repositories.Raw("json_extract(data, '$.role') = ?", "admin")
+```
+
+<hr />
+
+## GORM-Specific Methods:
+
+### Upsert (CreateOrUpdate):
+Insert a record, or update specific columns if a conflict is detected:
+```go
+id, err := repo.CreateOrUpdate(ctx, role, 
+    []string{"email"},           // conflict columns
+    []string{"name", "status"},  // columns to update on conflict (empty = update all)
+)
+```
+
+### FindOrCreate:
+Atomically find a record by conditions, or create it if it doesn't exist:
+```go
+entity, created, err := repo.FindOrCreate(ctx, 
+    repositories.Eq("email", "user@example.com"), // conditions
+    newUser,  // entity to create if not found
+    config,
+)
+if created {
+    fmt.Println("New user created")
+}
+```
+
+### Transactions (WithTransaction):
+Execute multiple operations inside a single database transaction:
+```go
+err := repo.WithTransaction(ctx, func(tx *gorm.DB) error {
+    if err := tx.Create(&order).Error; err != nil {
+        return err // triggers rollback
+    }
+    if err := tx.Create(&orderItems).Error; err != nil {
+        return err // triggers rollback
+    }
+    return nil // triggers commit
+})
+```
+
+### Soft Delete Restore:
+Restore a soft-deleted record:
+```go
+// Restore by primary key
+err := repo.Restore(ctx, id)
+
+// Restore by conditions
+err := repo.RestoreByConditions(ctx, repositories.Eq("email", email))
+```
 
 <hr />
 
@@ -641,10 +803,10 @@ func NewRoleController(service RoleService) *RoleController {
 ```
 <hr />
 
-#### 5- override methods:
-Usually, You need filtering on some data that not sent if filterDto, like return only posts which belong to user.
+#### 5- Override Methods:
+Usually, you need filtering on some data that is not sent in filterDto, like returning only posts which belong to a user.
 
-Here is Example for overriding `FindAll` method in `UserController`
+Here is an example of overriding `FindAll` method in `UserController` using the **Condition Builder**:
 
 ```go
 func (c *UserController) FindAll(ctx *fiber.Ctx) error {
@@ -657,28 +819,24 @@ func (c *UserController) FindAll(ctx *fiber.Ctx) error {
 	// BuildQuery depending on filterDto & repository config
 	filterDto := filter.GetBase()
 	conditions, err := c.Service.QueryBuilder(ctx.UserContext(), filter, nil)
-
-	// inject your custom filters
-	if conditionsMap, ok := conditions.(map[string]any); ok {
-		queryStr, _ := conditionsMap["query"].(string)
-		args, _ := conditionsMap["args"].([]any)
-		if args == nil {
-			args = []any{}
-		}
-
-		// Add your custom filters
-		queryStr, args = appendCondition(queryStr, args, "role_id = ?", 1)
-		queryStr, args = appendCondition(queryStr, args, "username LIKE ?", "go_user")
-
-		// Save back
-		conditionsMap["query"] = queryStr
-		conditionsMap["args"] = args
-		conditions = conditionsMap
-	}
-
 	if err != nil {
 		return fiber.NewError(fiber.StatusInternalServerError, err.Error())
 	}
+
+	// Inject custom filters using the Condition Builder
+	builtConditions := conditions.(map[string]any)
+	extraConditions := repositories.Eq("role_id", 1).
+		And(repositories.Contains("username", "go_user"))
+
+	// Merge the QueryBuilder output with your custom conditions
+	extraBuilt := extraConditions.Build()
+	if query, ok := builtConditions["query"].(string); ok && query != "" {
+		builtConditions["query"] = query + " AND " + extraBuilt["query"].(string)
+		builtConditions["args"] = append(builtConditions["args"].([]any), extraBuilt["args"].([]any)...)
+	} else {
+		builtConditions = extraBuilt
+	}
+	conditions = builtConditions
 
 	if filterDto.Pagination == nil || *filterDto.Pagination {
 		// get data with pagination
@@ -696,30 +854,64 @@ func (c *UserController) FindAll(ctx *fiber.Ctx) error {
 	}
 	return ctx.JSON(items)
 }
+```
 
-func appendCondition(query string, args []any, condition string, value any) (string, []any) {
-	if query != "" {
-		query += " AND " + condition
-	} else {
-		query = condition
-	}
-	args = append(args, value)
-	return query, args
-}
+For simpler cases where you don't use `QueryBuilder`, you can pass conditions directly:
+
+```go
+// Find all active users with a specific role
+items, err := service.FindAll(ctx,
+	repositories.Eq("active", true).And(repositories.Eq("role_id", 1)),
+	filter, nil,
+)
+
+// Check if username is taken
+taken, err := service.Exists(ctx, repositories.Eq("username", "john"))
+
+// Get all emails for users in a department
+emails, err := service.Pluck(ctx, "email", repositories.Eq("department_id", deptID))
+
+// Batch delete expired sessions
+err := service.DeleteByIDs(ctx, expiredSessionIDs)
+
+// Update specific columns (includes zero values, unlike UpdateByPK)
+err := service.UpdateColumnsByPK(ctx, userID, map[string]any{
+	"login_count": 0,
+	"last_login":  time.Now(),
+})
 ```
 <hr />
 
-### **GormCrudController** is extends **BaseCrudController** which offers these functions:
-
-Function, Function Parameters, Parsing Data from, Response
+### **GormCrudController** extends **BaseCrudController** which offers these functions:
 
 | Function  | Function Parameters  | Parsing Data from  | Response  |
 |:----------|:----------|:----------|:----------|
-| Create    | `*fiber.Ctx`   | **Body**    | T    |
-| Update    | `*fiber.Ctx`    | `id` from **Params**,<br /> `updateDto` from **Body**  | T   |
-| FindAll    | `*fiber.Ctx`    | Query    | `T[]` / `ListResponse[T]`    |
+| Create    | `*fiber.Ctx`   | **Body**    | `T`    |
+| Update    | `*fiber.Ctx`    | `id` from **Params**,<br /> `updateDto` from **Body**  | `T`   |
+| FindAll    | `*fiber.Ctx`    | **Query**    | `T[]` / `ListResponse[T]`    |
 | FindOne    | `*fiber.Ctx`    | `id` from **Params**    | `T`    |
 | Delete    | `*fiber.Ctx`    | `id` from **Params**    | `null`    |
+
+### **IBaseCrudService** provides these methods:
+
+| Method | Description |
+|--------|-------------|
+| `Create` | Create entity and return it with full config (preloads, selects) |
+| `Update` | Update entity by PK and return the updated entity |
+| `UpdateColumnsByPK` | Update specific columns by primary key |
+| `FindAll` | Find all entities matching conditions |
+| `FindAllWithPaging` | Find all entities with pagination response |
+| `FindOne` | Find a single entity by conditions |
+| `FindOneByPK` | Find a single entity by primary key |
+| `FindByIDs` | Find multiple entities by a list of IDs |
+| `Delete` | Delete entities matching conditions |
+| `DeleteOneByPK` | Delete a single entity by primary key |
+| `DeleteByIDs` | Delete multiple entities by a list of IDs |
+| `Count` | Count entities matching conditions |
+| `Exists` | Check existence by conditions (returns `bool`) |
+| `ExistsByPK` | Check existence by primary key (returns `bool`) |
+| `Pluck` | Extract a single column from matching entities |
+| `QueryBuilder` | Build query conditions from a FilterDto |
 
 <hr />
 
