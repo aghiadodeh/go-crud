@@ -49,7 +49,7 @@ func InitLocalization(defaultLanguage language.Tag, assets []string) error {
 func I18nMiddleware(defaultLanguage string) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		// Get language from header, query, cookie, or default
-		lang := c.Get("Language", defaultLanguage)
+		lang := c.Get("Accept-Language", defaultLanguage)
 		if l := c.Query("lang"); l != "" {
 			lang = l
 		}

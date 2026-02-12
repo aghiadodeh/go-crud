@@ -383,7 +383,7 @@ func NewRoleRepository(db *gorm.DB) RoleRepository {
 
 ##### 1- Add Context i18n middleware
 
-**I18nMiddleware** will get the client `"language"` form Http request headers and inject the language in the request context:
+**I18nMiddleware** will get the client `"accept-language"` form Http request headers and inject the language in the request context:
 
 ```go
 import (
@@ -399,7 +399,7 @@ func NewApp() (*App, error) {
 		// ...
 	})
 
-	// ("en") the default language if user didn't pass "language" key in the request headers
+	// ("en") the default language if user didn't pass "accept-language" key in the request headers
 	app.Use(middlewares.I18nMiddleware("en")) // <-- add here
 	// ...
 }
