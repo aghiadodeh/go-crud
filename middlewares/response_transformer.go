@@ -12,7 +12,17 @@ func ResponseTransformer(ctx *fiber.Ctx) error {
 	// Call next middleware/handler
 	err := ctx.Next()
 	if err != nil {
-		return err
+		fiberError, ok := err.(*fiber.Error)
+		if ok {
+			statusCode := fiberError.Code
+			message := Translate(ctx, fiberError.Message, nil)
+			return ctx.Status(statusCode).JSON(models.BaseResponse[any]{
+				Success:    false,
+				Message:    message,
+				Data:       nil,
+				StatusCode: statusCode,
+			})
+		}
 	}
 
 	// Skip Transform
