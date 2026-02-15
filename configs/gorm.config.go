@@ -44,6 +44,11 @@ type GormConfig struct {
 	Joins         string
 	UnScoped      bool
 	Group         string
+
+	// List-specific overrides (used by FindAll/FindAllWithPaging only).
+	// When set, these take precedence over SelectHandler/Preloads for list queries.
+	ListSelectHandler func(lang string) []GormSelectField
+	ListPreloads      []GormPreloadConfig
 }
 
 type GormSelectField struct {

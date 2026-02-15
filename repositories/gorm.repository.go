@@ -83,7 +83,8 @@ func (r *GormRepository[T]) Update(ctx context.Context, conditions any, updateDt
 
 func (r *GormRepository[T]) FindAll(ctx context.Context, conditions any, filter dto.FilterDto, config *configs.GormConfig, args ...any) ([]T, error) {
 	var models []T
-	query := r.BuildBaseQuery(ctx, conditions, filter, config)
+	listConfig := r.resolveListConfig(config)
+	query := r.BuildBaseQuery(ctx, conditions, filter, listConfig)
 	err := query.Find(&models).Error
 	return models, err
 }
@@ -92,19 +93,13 @@ func (r *GormRepository[T]) FindAllWithPaging(ctx context.Context, conditions an
 	var entities []T
 	var total int64
 
-	query := r.BuildBaseQuery(ctx, conditions, filter, config)
-	countQuery := r.BuildQueryConditions(ctx, conditions, config)
+	listConfig := r.resolveListConfig(config)
+	query := r.BuildBaseQuery(ctx, conditions, filter, listConfig)
+	countQuery := r.BuildQueryConditions(ctx, conditions, listConfig)
 
-	var gormConfig configs.GormConfig
-	if config == nil {
-		gormConfig = *r.Config
-	} else {
-		gormConfig = *config
-	}
-
-	if gormConfig.Group != "" {
-		query = query.Group(gormConfig.Group)
-		countQuery = countQuery.Group(gormConfig.Group)
+	if listConfig.Group != "" {
+		query = query.Group(listConfig.Group)
+		countQuery = countQuery.Group(listConfig.Group)
 	}
 
 	if err := countQuery.Model(new(T)).Count(&total).Error; err != nil {
@@ -265,6 +260,26 @@ func (r *GormRepository[T]) QueryBuilder(ctx context.Context, filter dto.FilterD
 		"query": finalQuery,
 		"args":  queryValues,
 	}, nil
+}
+
+// resolveListConfig returns a config with ListSelectHandler/ListPreloads applied
+// as overrides for list queries (FindAll, FindAllWithPaging).
+func (r *GormRepository[T]) resolveListConfig(config *configs.GormConfig) *configs.GormConfig {
+	var cfg configs.GormConfig
+	if config == nil {
+		cfg = *r.Config
+	} else {
+		cfg = *config
+	}
+
+	if cfg.ListSelectHandler != nil {
+		cfg.SelectHandler = cfg.ListSelectHandler
+	}
+	if cfg.ListPreloads != nil {
+		cfg.Preloads = cfg.ListPreloads
+	}
+
+	return &cfg
 }
 
 func (r *GormRepository[T]) BuildQueryConditions(ctx context.Context, conditions any, gormConfig *configs.GormConfig) *gorm.DB {
