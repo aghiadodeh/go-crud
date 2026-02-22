@@ -35,7 +35,7 @@ func (c *BaseCrudController[T, C, CreateDto, UpdateDto, FilterDto]) Create(ctx *
 		// Collect error messages
 		var messages []string
 		for _, err := range err.(validator.ValidationErrors) {
-			messages = append(messages, fmt.Sprintf("%s is %s", err.Field(), err.Tag()))
+			messages = append(messages, fmt.Sprintf("%s must be %s %s", err.Field(), err.Tag(), err.Param()))
 		}
 		return fiber.NewError(fiber.StatusBadRequest, strings.Join(messages, ", "))
 	}
@@ -73,7 +73,7 @@ func (c *BaseCrudController[T, C, CreateDto, UpdateDto, FilterDto]) Update(ctx *
 		// Collect error messages
 		var messages []string
 		for _, err := range err.(validator.ValidationErrors) {
-			messages = append(messages, fmt.Sprintf("%s is %s", err.Field(), err.Tag()))
+			messages = append(messages, fmt.Sprintf("%s must be %s %s", err.Field(), err.Tag(), err.Param()))
 		}
 		return fiber.NewError(fiber.StatusBadRequest, strings.Join(messages, ", "))
 	}
