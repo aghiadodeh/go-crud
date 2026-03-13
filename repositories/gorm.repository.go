@@ -83,7 +83,7 @@ func (r *GormRepository[T]) Update(ctx context.Context, conditions any, updateDt
 
 func (r *GormRepository[T]) FindAll(ctx context.Context, conditions any, filter dto.FilterDto, config *configs.GormConfig, args ...any) ([]T, error) {
 	var models []T
-	listConfig := r.resolveListConfig(config)
+	listConfig := r.ResolveListConfig(config)
 	query := r.BuildBaseQuery(ctx, conditions, filter, listConfig)
 	err := query.Find(&models).Error
 	return models, err
@@ -93,7 +93,7 @@ func (r *GormRepository[T]) FindAllWithPaging(ctx context.Context, conditions an
 	var entities []T
 	var total int64
 
-	listConfig := r.resolveListConfig(config)
+	listConfig := r.ResolveListConfig(config)
 	query := r.BuildBaseQuery(ctx, conditions, filter, listConfig)
 	countQuery := r.BuildQueryConditions(ctx, conditions, listConfig)
 
@@ -262,9 +262,9 @@ func (r *GormRepository[T]) QueryBuilder(ctx context.Context, filter dto.FilterD
 	}, nil
 }
 
-// resolveListConfig returns a config with ListSelectHandler/ListPreloads applied
+// ResolveListConfig returns a config with ListSelectHandler/ListPreloads applied
 // as overrides for list queries (FindAll, FindAllWithPaging).
-func (r *GormRepository[T]) resolveListConfig(config *configs.GormConfig) *configs.GormConfig {
+func (r *GormRepository[T]) ResolveListConfig(config *configs.GormConfig) *configs.GormConfig {
 	var cfg configs.GormConfig
 	if config == nil {
 		cfg = *r.Config
