@@ -6,16 +6,16 @@ import (
 	"github.com/aghiadodeh/go-crud/models"
 )
 
-func ExceptionHandler(ctx *fiber.Ctx, err error) error {
+func ExceptionHandler(ctx *fiber.Ctx, err error, messageHandler func(message string) string) error {
 	code := fiber.StatusInternalServerError
 	message := "Internal Server Error"
 
 	if e, ok := err.(*fiber.Error); ok {
 		code = e.Code
-		message = e.Message
+		message = messageHandler(e.Message)
+	} else {
+		messageHandler(message)
 	}
-
-	message = Translate(ctx, message, nil)
 
 	return ctx.Status(code).JSON(models.BaseResponse[any]{
 		Success:    false,

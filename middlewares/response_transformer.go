@@ -8,14 +8,14 @@ import (
 	"github.com/aghiadodeh/go-crud/models"
 )
 
-func ResponseTransformer(ctx *fiber.Ctx) error {
+func ResponseTransformer(ctx *fiber.Ctx, messageHandler func(message string) string) error {
 	// Call next middleware/handler
 	err := ctx.Next()
 	if err != nil {
 		fiberError, ok := err.(*fiber.Error)
 		if ok {
 			statusCode := fiberError.Code
-			message := Translate(ctx, fiberError.Message, nil)
+			message := messageHandler(fiberError.Message)
 			return ctx.Status(statusCode).JSON(models.BaseResponse[any]{
 				Success:    false,
 				Message:    message,
@@ -41,7 +41,7 @@ func ResponseTransformer(ctx *fiber.Ctx) error {
 	}
 
 	// Translate the message
-	message = Translate(ctx, message, nil)
+	message = messageHandler(message)
 
 	// Get the original response body
 	originalBody := ctx.Response().Body()

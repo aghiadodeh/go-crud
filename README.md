@@ -176,7 +176,14 @@ func NewApp() (*App, error) {
 
 	app := fiber.New(fiber.Config{
 		AppName:           "Users API",
-		ErrorHandler:      middlewares.ExceptionHandler,
+		ErrorHandler: func(c *fiber.Ctx, err error) error {
+			return middlewares.ExceptionHandler(c, err, func(message string) string {
+				if strings.Contains(strings.ToLower(message), "sql") {
+					return "Internal Server Error"
+				}
+				return middlewares.Translate(c, message, nil)
+			})
+		},
 	})
 
 	// full path of locales json files
@@ -239,7 +246,14 @@ func NewApp() (*App, error) {
 		// ...
 	})
 
-	app.Use(middlewares.ResponseTransformer) // <-- add here
+	app.Use(func(c *fiber.Ctx) error { // <-- add here
+		return middlewares.ResponseTransformer(c, func(message string) string {
+			if strings.Contains(strings.ToLower(message), "SQL") {
+				return "Internal Server Error"
+			}
+			return middlewares.Translate(c, message, nil)
+		})
+	}) 
 
 	// ...
 }
