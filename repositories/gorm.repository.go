@@ -227,6 +227,9 @@ func (r *GormRepository[T]) QueryBuilder(ctx context.Context, filter dto.FilterD
 			}
 
 			switch prop.FilterType {
+			case configs.GormFilterTypeCustom:
+				queryStrings = append(queryStrings, fmt.Sprintf("%s ?", column))
+				queryValues = append(queryValues, value)
 			case configs.GormFilterTypeEqual:
 				queryStrings = append(queryStrings, fmt.Sprintf("%s = ?", column))
 				queryValues = append(queryValues, value)

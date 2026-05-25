@@ -10,14 +10,15 @@ const (
 type GormFilterType string
 
 const (
-	GormFilterTypeEqual GormFilterType = "equal"
-	GormFilterTypeIn    GormFilterType = "in"
-	GormFilterTypeNotIn GormFilterType = "not_in"
-	GormFilterTypeLT    GormFilterType = "lt"
-	GormFilterTypeGT    GormFilterType = "gt"
-	GormFilterTypeLTE   GormFilterType = "lte"
-	GormFilterTypeGTE   GormFilterType = "gte"
-	GormFilterTypeRegex GormFilterType = "regex"
+	GormFilterTypeCustom GormFilterType = "custom" // IS NULL, IS NOT NULL, etc.
+	GormFilterTypeEqual  GormFilterType = "equal"
+	GormFilterTypeIn     GormFilterType = "in"
+	GormFilterTypeNotIn  GormFilterType = "not_in"
+	GormFilterTypeLT     GormFilterType = "lt"
+	GormFilterTypeGT     GormFilterType = "gt"
+	GormFilterTypeLTE    GormFilterType = "lte"
+	GormFilterTypeGTE    GormFilterType = "gte"
+	GormFilterTypeRegex  GormFilterType = "regex"
 )
 
 type GormRegexConcat struct {

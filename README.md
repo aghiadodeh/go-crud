@@ -625,6 +625,7 @@ You can check filtering types with **GormFilterType**:
 type GormFilterType string
 
 const (
+	GormFilterTypeCustom GormFilterType = "custom" // gorm.Expr("IS NOT NULL"), etc.
 	GormFilterTypeEqual GormFilterType = "equal"
 	GormFilterTypeIn    GormFilterType = "in"
 	GormFilterTypeNotIn GormFilterType = "not_in"
